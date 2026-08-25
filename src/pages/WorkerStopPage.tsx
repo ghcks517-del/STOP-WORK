@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, Navigate } from 'react-router-dom';
 import { AlertTriangle, Send } from 'lucide-react';
+import { isRunningAsPWA } from '../lib/utils';
 
 export default function WorkerStopPage() {
   const [searchParams] = useSearchParams();
+  
+  if (isRunningAsPWA()) {
+    return <Navigate to="/admin" replace />;
+  }
+  
   const defaultProject = searchParams.get('project') || '';
   const defaultLocation = searchParams.get('location') || '';
 
