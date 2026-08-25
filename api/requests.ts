@@ -1,22 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import admin from 'firebase-admin';
-
-// Initialize Firebase Admin once
-if (!admin.apps.length) {
-  try {
-    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
-      console.log('Firebase Admin SDK initialized successfully.');
-    } else {
-      console.warn('FIREBASE_SERVICE_ACCOUNT_KEY is not set.');
-    }
-  } catch (error) {
-    console.error('Failed to initialize Firebase Admin:', error);
-  }
-}
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getMessaging } from 'firebase-admin/messaging';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -33,7 +18,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const db = admin.firestore();
+    // Initialize Firebase Admin safely inside the handler
+    if (getApps().length === 0) {
+      let serviceAccount;
+      try {
+        const keyString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+        // Handle potential formatting issues (e.g., escaped newlines from Vercel)
+        const cleanKeyString = keyString.replace(/\\n/g, '\n');
+        serviceAccount = JSON.parse(cleanKeyString);
+      } catch (parseError: any) {
+        console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', parseError);
+        return res.status(500).json({ error: 'Service account key JSON parse error: ' + parseError.message });
+      }
+
+      try {
+        initializeApp({
+          credential: cert(serviceAccount)
+        });
+        console.log('Firebase Admin SDK initialized successfully.');
+      } catch (initError: any) {
+        console.error('Failed to initialize Firebase Admin:', initError);
+        return res.status(500).json({ error: 'Firebase init error: ' + initError.message });
+      }
+    }
+
+    const db = getFirestore();
     
     // Fetch active admins who have push enabled
     const adminsSnapshot = await db.collection('adminDevices')
@@ -56,7 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         tokens: tokens,
       };
 
-      const response = await admin.messaging().sendEachForMulticast(message);
+      const response = await getMessaging().sendEachForMulticast(message);
       
       // Clean up invalid tokens
       const failedTokens: string[] = [];
@@ -87,3 +96,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: error.message });
   }
 }
+

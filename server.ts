@@ -1,17 +1,23 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import admin from 'firebase-admin';
+import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getMessaging } from 'firebase-admin/messaging';
 
 // Initialize Firebase Admin
-let firebaseAdminApp: admin.app.App | null = null;
+let firebaseAdminApp: App | null = null;
 try {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-    firebaseAdminApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-    console.log('Firebase Admin SDK initialized securely.');
+    const keyString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    const cleanKeyString = keyString.replace(/\\n/g, '\n');
+    const serviceAccount = JSON.parse(cleanKeyString);
+    if (getApps().length === 0) {
+      firebaseAdminApp = initializeApp({
+        credential: cert(serviceAccount)
+      });
+      console.log('Firebase Admin SDK initialized securely.');
+    }
   } else {
     console.warn('FIREBASE_SERVICE_ACCOUNT_KEY is not set. Push notifications will be mocked.');
   }
@@ -42,12 +48,12 @@ async function startServer() {
       // Firestore trigger. However, since we don't have Cloud Functions, the client can 
       // call this API to send the push AFTER saving to Firestore.
       
-      if (!firebaseAdminApp) {
+      if (!getApps().length) {
         console.log('[Mock Push] Would send push for:', req.body);
         return res.json({ success: true, mocked: true });
       }
 
-      const db = admin.firestore();
+      const db = getFirestore();
       
       // 1. Fetch active admins who have push enabled
       const adminsSnapshot = await db.collection('adminDevices')
@@ -74,7 +80,7 @@ async function startServer() {
           tokens: tokens,
         };
 
-        const response = await admin.messaging().sendEachForMulticast(message);
+        const response = await getMessaging().sendEachForMulticast(message);
         console.log('Push notifications sent:', response.successCount, 'success,', response.failureCount, 'failures');
         
         // Clean up invalid tokens
