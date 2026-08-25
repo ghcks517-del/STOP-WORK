@@ -117,9 +117,20 @@ export default function AdminSettings() {
 
   const removeDevice = async (deviceId: string) => {
     if (confirm('이 기기의 Push 알림을 해제하시겠습니까?')) {
-      await deleteDoc(doc(db, 'adminDevices', deviceId));
-      fetchDevices();
+      try {
+        await deleteDoc(doc(db, 'adminDevices', deviceId));
+        if (localStorage.getItem('currentDeviceId') === deviceId) {
+          localStorage.removeItem('currentDeviceId');
+        }
+        await fetchDevices();
+        return true;
+      } catch (error) {
+        console.error('Failed to remove device:', error);
+        alert('알림 해제에 실패했습니다.');
+        return false;
+      }
     }
+    return false;
   };
 
   const sendTestPush = async (token: string) => {
@@ -180,7 +191,6 @@ export default function AdminSettings() {
                         const deviceId = localStorage.getItem('currentDeviceId');
                         if (deviceId) {
                           await removeDevice(deviceId);
-                          localStorage.removeItem('currentDeviceId');
                         }
                       }}
                       className="w-full bg-red-50 text-red-600 py-3 rounded-xl text-xs font-bold shadow-sm hover:bg-red-100 border border-red-200 transition-all flex items-center justify-center gap-2"
