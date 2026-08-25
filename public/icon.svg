@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Dark blue rounded background -->
+  <rect width="512" height="512" rx="112" fill="#0f172a"/>
+  
+  <!-- Orange shield icon -->
+  <path d="M256 80 L120 135 V250 C120 355 175 415 256 450 C337 415 392 355 392 250 V135 Z" fill="none" stroke="#f97316" stroke-width="36" stroke-linejoin="round"/>
+  
+  <!-- Exclamation mark inside -->
+  <path d="M256 180 V300 M256 350 V354" stroke="#f97316" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
