@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /stopRequests/{requestId} {
+      allow read, write: if true;
+    }
+    match /admins/{adminId} {
+      allow read, write: if true;
+    }
+    match /adminDevices/{deviceId} {
+      allow read, write: if true;
+    }
+  }
+}

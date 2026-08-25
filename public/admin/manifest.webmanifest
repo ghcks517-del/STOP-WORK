@@ -1,0 +1,17 @@
+{
+  "name": "작업중지권 관리자",
+  "short_name": "작업중지권",
+  "start_url": "/admin",
+  "scope": "/admin/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "https://www.gstatic.com/images/branding/product/1x/firebase_512dp.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
