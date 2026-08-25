@@ -16,6 +16,7 @@ export default function AdminSettings() {
   // Current device state
   const [pushStatus, setPushStatus] = useState<'granted' | 'denied' | 'default'>('default');
   const [currentToken, setCurrentToken] = useState<string | null>(null);
+  const [isToggling, setIsToggling] = useState(false);
 
   useEffect(() => {
     if ('Notification' in window) {
@@ -54,6 +55,7 @@ export default function AdminSettings() {
         return;
       }
       
+      setIsToggling(true);
       let permission = Notification.permission;
       if (permission !== 'granted') {
         permission = await Notification.requestPermission();
@@ -62,6 +64,7 @@ export default function AdminSettings() {
       
       if (permission === 'denied') {
         alert('알림 권한이 거부되었습니다. 기기 설정에서 알림을 직접 허용해주세요.');
+        setIsToggling(false);
         return;
       }
 
@@ -69,6 +72,7 @@ export default function AdminSettings() {
         const messaging = await getFirebaseMessaging();
         if (!messaging) {
           alert('현재 환경에서는 Push 알림 기능이 지원되지 않습니다.');
+          setIsToggling(false);
           return;
         }
         
@@ -76,9 +80,11 @@ export default function AdminSettings() {
         const registration = await navigator.serviceWorker.register('/admin/firebase-messaging-sw.js');
         await navigator.serviceWorker.ready;
         
-        const token = await getToken(messaging, {
-          serviceWorkerRegistration: registration,
-        });
+        // getToken은 VAPID 키가 없거나 네트워크 환경에 따라 무한 대기할 수 있으므로 타임아웃을 설정합니다.
+        const token = await Promise.race([
+          getToken(messaging, { serviceWorkerRegistration: registration }),
+          new Promise<string>((_, reject) => setTimeout(() => reject(new Error('토큰 발급 시간 초과 (VAPID 설정 문제일 수 있습니다.)')), 10000))
+        ]);
 
         if (token) {
           setCurrentToken(token);
@@ -103,7 +109,7 @@ export default function AdminSettings() {
             active: true
           });
           
-          fetchDevices();
+          await fetchDevices();
           alert('Push 알림이 활성화되었습니다.');
         } else {
           alert('Push 토큰을 발급받지 못했습니다.');
@@ -112,22 +118,28 @@ export default function AdminSettings() {
     } catch (error: any) {
       console.error('Error enabling push:', error);
       alert(`Push 설정 오류: ${error.message || '알 수 없는 오류'}`);
+    } finally {
+      setIsToggling(false);
     }
   };
 
   const removeDevice = async (deviceId: string) => {
     if (confirm('이 기기의 Push 알림을 해제하시겠습니까?')) {
+      setIsToggling(true);
       try {
         await deleteDoc(doc(db, 'adminDevices', deviceId));
         if (localStorage.getItem('currentDeviceId') === deviceId) {
           localStorage.removeItem('currentDeviceId');
         }
         await fetchDevices();
+        alert('Push 알림이 성공적으로 해제되었습니다.\n\n(참고: 기기 설정에 표시되는 "Push 권한: 허용됨" 문구는 브라우저 고유 권한이므로 유지되지만, 시스템상 알림 발송은 완전히 중단됩니다.)');
         return true;
       } catch (error) {
         console.error('Failed to remove device:', error);
         alert('알림 해제에 실패했습니다.');
         return false;
+      } finally {
+        setIsToggling(false);
       }
     }
     return false;
@@ -188,23 +200,26 @@ export default function AdminSettings() {
                   {devices.some(d => d.id === localStorage.getItem('currentDeviceId')) ? (
                     <button
                       onClick={async () => {
+                        if (isToggling) return;
                         const deviceId = localStorage.getItem('currentDeviceId');
                         if (deviceId) {
                           await removeDevice(deviceId);
                         }
                       }}
-                      className="w-full bg-red-50 text-red-600 py-3 rounded-xl text-xs font-bold shadow-sm hover:bg-red-100 border border-red-200 transition-all flex items-center justify-center gap-2"
+                      disabled={isToggling}
+                      className={`w-full py-3 rounded-xl text-xs font-bold shadow-sm border transition-all flex items-center justify-center gap-2 ${isToggling ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-red-50 text-red-600 hover:bg-red-100 border-red-200'}`}
                     >
                       <BellOff className="w-4 h-4" />
-                      Push 알림 해제하기
+                      {isToggling ? '처리 중...' : 'Push 알림 해제하기'}
                     </button>
                   ) : (
                     <button
-                      onClick={enablePush}
-                      className="w-full bg-slate-900 text-white py-3 rounded-xl text-xs font-bold shadow-md hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                      onClick={() => !isToggling && enablePush()}
+                      disabled={isToggling}
+                      className={`w-full py-3 rounded-xl text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 ${isToggling ? 'bg-slate-400 text-white cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
                     >
                       <Bell className="w-4 h-4" />
-                      Push 알림 활성화
+                      {isToggling ? '권한 요청 및 등록 중...' : 'Push 알림 활성화'}
                     </button>
                   )}
                 </div>

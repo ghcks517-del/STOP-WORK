@@ -10,8 +10,13 @@ let firebaseAdminApp: App | null = null;
 try {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
     const keyString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-    const cleanKeyString = keyString.replace(/\\n/g, '\n');
-    const serviceAccount = JSON.parse(cleanKeyString);
+    let serviceAccount;
+    try {
+      serviceAccount = JSON.parse(keyString);
+    } catch (e) {
+      serviceAccount = JSON.parse(keyString.replace(/\n/g, '\\n').replace(/\r/g, ''));
+    }
+    
     if (getApps().length === 0) {
       firebaseAdminApp = initializeApp({
         credential: cert(serviceAccount)
@@ -69,7 +74,9 @@ async function startServer() {
         .map(doc => doc.data().pushRegistrationId)
         .filter(token => !!token);
 
-      if (tokens.length > 0) {
+      const uniqueTokens = [...new Set(tokens)];
+
+      if (uniqueTokens.length > 0) {
         const shortReason = reason.length > 20 ? reason.substring(0, 20) + '...' : reason;
         
         const message = {
@@ -77,7 +84,7 @@ async function startServer() {
             title: '[작업중지권] 신규 접수',
             body: `${project} / ${location}\n${workerName} - ${shortReason}`,
           },
-          tokens: tokens,
+          tokens: uniqueTokens,
         };
 
         const response = await getMessaging().sendEachForMulticast(message);

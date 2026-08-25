@@ -22,10 +22,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (getApps().length === 0) {
       let serviceAccount;
       try {
-        const keyString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-        // Handle potential formatting issues (e.g., escaped newlines from Vercel)
-        const cleanKeyString = keyString.replace(/\\n/g, '\n');
-        serviceAccount = JSON.parse(cleanKeyString);
+        const keyString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '';
+        try {
+          // First try standard parse (Vercel usually handles env vars correctly if pasted correctly)
+          serviceAccount = JSON.parse(keyString);
+        } catch (e) {
+          // If they pasted literal newlines, we need to escape them for JSON
+          const fixedString = keyString.replace(/\n/g, '\\n').replace(/\r/g, '');
+          serviceAccount = JSON.parse(fixedString);
+        }
       } catch (parseError: any) {
         console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:', parseError);
         return res.status(500).json({ error: 'Service account key JSON parse error: ' + parseError.message });
@@ -54,7 +59,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .map(doc => doc.data().pushRegistrationId)
       .filter(token => !!token);
 
-    if (tokens.length > 0) {
+    // Deduplicate tokens to avoid FCM errors
+    const uniqueTokens = [...new Set(tokens)];
+
+    if (uniqueTokens.length > 0) {
       const shortReason = reason.length > 20 ? reason.substring(0, 20) + '...' : reason;
       
       const message = {
@@ -62,7 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           title: '[작업중지권] 긴급 발생!',
           body: `${project} / ${location}\n${workerName} - ${shortReason}`,
         },
-        tokens: tokens,
+        tokens: uniqueTokens,
       };
 
       const response = await getMessaging().sendEachForMulticast(message);
