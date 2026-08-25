@@ -4,7 +4,7 @@ import { collection, query, orderBy, onSnapshot, deleteDoc, doc } from 'firebase
 import { db } from '../lib/firebase';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { Download, Trash2 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -30,19 +30,73 @@ export default function AdminDashboard() {
       return;
     }
 
-    const exportData = requests.map((req, index) => ({
-      'No': index + 1,
-      '상태': req.status === 'pending' ? '접수' : req.status === 'in_progress' ? '조치중' : '완료',
-      '접수일시': req.createdAt ? format(req.createdAt.toDate(), 'yyyy-MM-dd HH:mm:ss') : '-',
-      'PJT 명': req.project,
-      '상세 위치': req.location,
-      '소속 업체': req.company,
-      '작업자 명': req.workerName,
-      '작업중지 사유': req.reason,
-      '조치 내역': req.actionDetails || '-'
-    }));
+    const headers = ['No', '상태', '접수일시', 'PJT 명', '상세 위치', '소속 업체', '작업자 명', '작업중지 사유', '조치 내역'];
+    
+    const exportData = requests.map((req, index) => [
+      index + 1,
+      req.status === 'pending' ? '접수' : req.status === 'in_progress' ? '조치중' : '완료',
+      req.createdAt ? format(req.createdAt.toDate(), 'yyyy-MM-dd HH:mm:ss') : '-',
+      req.project,
+      req.location,
+      req.company,
+      req.workerName,
+      req.reason,
+      req.actionDetails || '-'
+    ]);
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    // Insert headers at the beginning
+    exportData.unshift(headers);
+
+    const worksheet = XLSX.utils.aoa_to_sheet(exportData);
+
+    // Column widths
+    worksheet['!cols'] = [
+      { wch: 5 },  // No
+      { wch: 10 }, // 상태
+      { wch: 20 }, // 접수일시
+      { wch: 20 }, // PJT 명
+      { wch: 20 }, // 상세 위치
+      { wch: 15 }, // 소속 업체
+      { wch: 12 }, // 작업자 명
+      { wch: 40 }, // 작업중지 사유
+      { wch: 40 }  // 조치 내역
+    ];
+
+    // Apply styles
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellAddress = { c: C, r: R };
+        const cellRef = XLSX.utils.encode_cell(cellAddress);
+        if (!worksheet[cellRef]) continue;
+
+        const isHeader = R === 0;
+        worksheet[cellRef].s = {
+          font: {
+            name: '맑은 고딕',
+            sz: 11,
+            bold: isHeader,
+            color: isHeader ? { rgb: "FFFFFF" } : { rgb: "000000" }
+          },
+          fill: isHeader ? {
+            patternType: 'solid',
+            fgColor: { rgb: "4F46E5" } // Indigo-600 background for header
+          } : undefined,
+          alignment: {
+            vertical: 'center',
+            horizontal: (C === 7 || C === 8) && !isHeader ? 'left' : 'center', // Left align for reason and action
+            wrapText: true
+          },
+          border: {
+            top: { style: 'thin', color: { rgb: "E5E7EB" } },
+            bottom: { style: 'thin', color: { rgb: "E5E7EB" } },
+            left: { style: 'thin', color: { rgb: "E5E7EB" } },
+            right: { style: 'thin', color: { rgb: "E5E7EB" } }
+          }
+        };
+      }
+    }
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, '작업중지권_접수내역');
     XLSX.writeFile(workbook, `작업중지권_접수내역_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`);
