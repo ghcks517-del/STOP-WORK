@@ -30,7 +30,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    const headers = ['No', '상태', '접수일시', 'PJT 명', '상세 위치', '소속 업체', '작업자 명', '작업중지 사유', '조치 내역'];
+    const headers = ['No', '상태', '접수일시', 'PJT 명', '상세 위치', '소속 업체', '작업자 명', '작업중지 요청사유', '조치 내역'];
     
     const exportData = requests.map((req, index) => [
       index + 1,
@@ -58,7 +58,7 @@ export default function AdminDashboard() {
       { wch: 20 }, // 상세 위치
       { wch: 15 }, // 소속 업체
       { wch: 12 }, // 작업자 명
-      { wch: 40 }, // 작업중지 사유
+      { wch: 40 }, // 작업중지 요청사유
       { wch: 40 }  // 조치 내역
     ];
 

@@ -131,7 +131,7 @@ export default function WorkerStopPage() {
                 value={project}
                 onChange={(e) => setProject(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all text-sm font-medium"
-                placeholder="예: 평택 A현장"
+                placeholder="예: S사 코터설비"
               />
             </div>
             
@@ -208,7 +208,7 @@ export default function WorkerStopPage() {
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">작업중지 사유</label>
+              <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">작업중지 요청사유</label>
               <textarea
                 required
                 value={reason}
