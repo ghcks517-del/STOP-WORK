@@ -34,19 +34,47 @@ export default function AdminSettings() {
   };
 
   const enablePush = async () => {
-    if (!isMobile || !isStandalone) return;
-    const adminUid = localStorage.getItem('adminUid');
-    if (!adminUid) return;
-    
     try {
-      const permission = await Notification.requestPermission();
-      setPushStatus(permission);
+      if (!isMobile) {
+        alert('모바일 기기에서만 지원됩니다.');
+        return;
+      }
+      if (!isStandalone) {
+        alert('PWA(홈 화면 추가) 모드에서만 실행 가능합니다.');
+        return;
+      }
+      const adminUid = localStorage.getItem('adminUid');
+      if (!adminUid) {
+        alert('관리자 로그인 정보가 없습니다.');
+        return;
+      }
+      
+      if (!('Notification' in window)) {
+        alert('이 기기/브라우저는 Push 알림을 지원하지 않습니다. (iOS 16.4+ 필요)');
+        return;
+      }
+      
+      let permission = Notification.permission;
+      if (permission !== 'granted') {
+        permission = await Notification.requestPermission();
+        setPushStatus(permission);
+      }
+      
+      if (permission === 'denied') {
+        alert('알림 권한이 거부되었습니다. 기기 설정에서 알림을 직접 허용해주세요.');
+        return;
+      }
+
       if (permission === 'granted') {
         const messaging = await getFirebaseMessaging();
-        if (!messaging) throw new Error('Messaging not supported');
+        if (!messaging) {
+          alert('현재 환경에서는 Push 알림 기능이 지원되지 않습니다.');
+          return;
+        }
         
         // Ensure Service Worker is registered
         const registration = await navigator.serviceWorker.register('/admin/firebase-messaging-sw.js');
+        await navigator.serviceWorker.ready;
         
         const token = await getToken(messaging, {
           serviceWorkerRegistration: registration,
@@ -54,7 +82,7 @@ export default function AdminSettings() {
 
         if (token) {
           setCurrentToken(token);
-          const deviceId = `device_${adminUid}_${Date.now()}`; // Simple ID generation
+          const deviceId = `device_${adminUid}_${Date.now()}`;
           
           await setDoc(doc(db, 'adminDevices', deviceId), {
             adminUid: adminUid,
@@ -76,11 +104,13 @@ export default function AdminSettings() {
           
           fetchDevices();
           alert('Push 알림이 활성화되었습니다.');
+        } else {
+          alert('Push 토큰을 발급받지 못했습니다.');
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error enabling push:', error);
-      alert('Push 설정 중 오류가 발생했습니다.');
+      alert(`Push 설정 오류: ${error.message || '알 수 없는 오류'}`);
     }
   };
 
