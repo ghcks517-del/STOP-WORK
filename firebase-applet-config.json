@@ -1,12 +1,9 @@
 {
-  "projectId": "fluid-chimera-dsx2c",
-  "appId": "1:813110073630:web:8b14461725a8692681910f",
-  "apiKey": "AIzaSyDdiva8BHpJp5bjBwvsHGulUf9U80Qd8Y0",
-  "authDomain": "fluid-chimera-dsx2c.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-e60bafd6-629a-4725-a616-188739453121",
-  "storageBucket": "fluid-chimera-dsx2c.firebasestorage.app",
-  "messagingSenderId": "813110073630",
-  "measurementId": "",
-  "oAuthClientId": "813110073630-qi0uroe8b0ui9oh6mlpu9ehnmk28mrp3.apps.googleusercontent.com",
-  "recaptchaSiteKey": ""
+  "apiKey": "AIzaSyA-hlawaQ9GlmzPl5GrYkA46o6cZ2xQD4o",
+  "authDomain": "stop-work-aebd6.firebaseapp.com",
+  "projectId": "stop-work-aebd6",
+  "storageBucket": "stop-work-aebd6.firebasestorage.app",
+  "messagingSenderId": "427802047004",
+  "appId": "1:427802047004:web:8e967200a284659997e5d9",
+  "measurementId": "G-WVD2Z5SQLF"
 }
