@@ -83,6 +83,7 @@ export default function AdminSettings() {
         if (token) {
           setCurrentToken(token);
           const deviceId = `device_${adminUid}_${Date.now()}`;
+          localStorage.setItem('currentDeviceId', deviceId);
           
           await setDoc(doc(db, 'adminDevices', deviceId), {
             adminUid: adminUid,
@@ -173,11 +174,20 @@ export default function AdminSettings() {
                 </>
               ) : (
                 <div className="mt-4 pt-4 border-t border-orange-200/50">
-                  {pushStatus === 'granted' ? (
-                    <div className="flex items-center gap-2 text-[11px] font-bold text-green-700 bg-green-50/80 p-3 rounded-xl border border-green-200">
-                      <CheckCircle2 className="w-4 h-4" />
-                      Push 알림 수신 중
-                    </div>
+                  {devices.some(d => d.id === localStorage.getItem('currentDeviceId')) ? (
+                    <button
+                      onClick={async () => {
+                        const deviceId = localStorage.getItem('currentDeviceId');
+                        if (deviceId) {
+                          await removeDevice(deviceId);
+                          localStorage.removeItem('currentDeviceId');
+                        }
+                      }}
+                      className="w-full bg-red-50 text-red-600 py-3 rounded-xl text-xs font-bold shadow-sm hover:bg-red-100 border border-red-200 transition-all flex items-center justify-center gap-2"
+                    >
+                      <BellOff className="w-4 h-4" />
+                      Push 알림 해제하기
+                    </button>
                   ) : (
                     <button
                       onClick={enablePush}
