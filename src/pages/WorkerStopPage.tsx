@@ -15,6 +15,7 @@ export default function WorkerStopPage() {
   
   const defaultProject = searchParams.get('project') || '';
   const defaultLocation = searchParams.get('location') || '';
+  const isNfcLocation = !!searchParams.get('location');
 
   const [project, setProject] = useState(defaultProject);
   const [location, setLocation] = useState(defaultLocation);
@@ -144,14 +145,15 @@ export default function WorkerStopPage() {
               <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">상세 위치</label>
               <input
                 type="text"
-                list="building-list"
+                list={isNfcLocation ? undefined : "building-list"}
                 required
+                readOnly={isNfcLocation}
                 value={location}
                 onChange={(e) => {
                   setLocation(e.target.value);
                   setCoordinates(null);
                 }}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all text-sm font-medium"
+                className={`w-full px-4 py-3 border border-slate-200 rounded-xl outline-none transition-all text-sm font-medium ${isNfcLocation ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-slate-50 focus:ring-2 focus:ring-red-500 focus:border-red-500'}`}
                 placeholder="예: 본관 A동, 또는 NFC 자동 기입"
               />
               <datalist id="building-list">
