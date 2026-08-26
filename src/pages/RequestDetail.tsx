@@ -75,8 +75,7 @@ export default function RequestDetail() {
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-lg md:text-xl font-bold text-slate-900">{request.project}</h2>
-              <p className="text-xs text-slate-500">{request.location}</p>
+              <h2 className="text-lg md:text-xl font-bold text-slate-900">{request.location}</h2>
             </div>
           </div>
           <span className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 ${
@@ -93,7 +92,7 @@ export default function RequestDetail() {
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
               <span className="block text-[10px] uppercase tracking-widest text-slate-500 mb-1">작업자</span>
               <span className="font-bold text-sm text-slate-900">{request.workerName}</span>
-              {request.company && <span className="text-xs text-slate-600 ml-2">({request.company})</span>}
+              {request.phoneNumber && <span className="block text-xs text-slate-500 mt-1">{request.phoneNumber}</span>}
             </div>
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
               <span className="block text-[10px] uppercase tracking-widest text-slate-500 mb-1">접수 시간</span>

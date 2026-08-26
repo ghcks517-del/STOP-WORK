@@ -30,16 +30,15 @@ export default function AdminDashboard() {
       return;
     }
 
-    const headers = ['No', '상태', '접수일시', 'PJT 명', '상세 위치', '소속 업체', '작업자 명', '작업중지 요청사유', '조치 내역'];
+    const headers = ['No', '상태', '접수일시', '상세 위치', '작업자 명', '휴대폰 번호', '작업중지 사유', '조치 내역'];
     
     const exportData = requests.map((req, index) => [
       index + 1,
       req.status === 'pending' ? '접수' : req.status === 'in_progress' ? '조치중' : '완료',
       req.createdAt ? format(req.createdAt.toDate(), 'yyyy-MM-dd HH:mm:ss') : '-',
-      req.project,
       req.location,
-      req.company,
       req.workerName,
+      req.phoneNumber || '-',
       req.reason,
       req.actionDetails || '-'
     ]);
@@ -54,11 +53,10 @@ export default function AdminDashboard() {
       { wch: 5 },  // No
       { wch: 10 }, // 상태
       { wch: 20 }, // 접수일시
-      { wch: 20 }, // PJT 명
       { wch: 20 }, // 상세 위치
-      { wch: 15 }, // 소속 업체
       { wch: 12 }, // 작업자 명
-      { wch: 40 }, // 작업중지 요청사유
+      { wch: 15 }, // 휴대폰 번호
+      { wch: 40 }, // 작업중지 사유
       { wch: 40 }  // 조치 내역
     ];
 
@@ -84,7 +82,7 @@ export default function AdminDashboard() {
           } : undefined,
           alignment: {
             vertical: 'center',
-            horizontal: (C === 7 || C === 8) && !isHeader ? 'left' : 'center', // Left align for reason and action
+            horizontal: (C === 6 || C === 7) && !isHeader ? 'left' : 'center', // Left align for reason and action
             wrapText: true
           },
           border: {
@@ -162,12 +160,13 @@ export default function AdminDashboard() {
                   <Trash2 className="w-4 h-4" />
                 </button>
                 
-                <h3 className="font-bold text-sm mb-1 line-clamp-1 pr-6">{req.project} / {req.location?.split(' (X')[0]}</h3>
-                <p className="text-xs text-slate-600 mb-3 line-clamp-2">{req.workerName} / {req.reason}</p>
+                <h3 className="font-bold text-sm mb-1 line-clamp-1 pr-6">{req.location?.split(' (X')[0]}</h3>
+                <p className="text-xs text-slate-600 mb-3 line-clamp-2">
+                  {req.workerName}{req.phoneNumber ? ` (${req.phoneNumber})` : ''} / {req.reason}
+                </p>
 
                 <div className="flex justify-between items-center mt-auto pt-2 border-t border-slate-50">
-                  <span className="text-[10px] text-slate-400">{req.company || '소속 미기재'}</span>
-                  <div className="text-[10px] font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-colors">상세보기</div>
+                  <div className="text-[10px] font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-colors ml-auto">상세보기</div>
                 </div>
               </div>
             </Link>

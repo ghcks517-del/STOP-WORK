@@ -13,15 +13,13 @@ export default function WorkerStopPage() {
     return <Navigate to="/admin" replace />;
   }
   
-  const defaultProject = searchParams.get('project') || '';
   const defaultLocation = searchParams.get('location') || '';
   const isNfcLocation = !!searchParams.get('location');
 
-  const [project, setProject] = useState(defaultProject);
   const [location, setLocation] = useState(defaultLocation);
   const [coordinates, setCoordinates] = useState<{x: number, y: number} | null>(null);
   const [workerName, setWorkerName] = useState('');
-  const [company, setCompany] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState(localStorage.getItem('workerPhoneNumber') || '');
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -37,12 +35,15 @@ export default function WorkerStopPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!project || !location || !workerName || !reason) return;
+    if (!location || !workerName || !phoneNumber || !reason) return;
     
     if (isKnownBuilding && !coordinates) {
       alert('도면에서 정확한 위치를 클릭하여 선택해주세요.');
       return;
     }
+
+    // Save phone number to local storage for convenience
+    localStorage.setItem('workerPhoneNumber', phoneNumber);
 
     const finalLocation = (isKnownBuilding && coordinates)
       ? `${location} (X:${Math.round(coordinates.x)}%, Y:${Math.round(coordinates.y)}%)`
@@ -52,10 +53,9 @@ export default function WorkerStopPage() {
     try {
       // 1. Save to Firestore directly
       const requestRef = await addDoc(collection(db, 'stopRequests'), {
-        project,
         location: finalLocation,
         workerName,
-        company,
+        phoneNumber,
         reason,
         status: 'pending',
         createdAt: serverTimestamp(),
@@ -68,9 +68,9 @@ export default function WorkerStopPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id: requestRef.id,
-            project,
             location,
             workerName,
+            phoneNumber,
             reason
           })
         });
@@ -130,18 +130,6 @@ export default function WorkerStopPage() {
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <div className="space-y-4 flex-1">
             <div>
-              <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">PJT 명</label>
-              <input
-                type="text"
-                required
-                value={project}
-                onChange={(e) => setProject(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all text-sm font-medium"
-                placeholder="예: S사 코터설비"
-              />
-            </div>
-            
-            <div>
               <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">상세 위치</label>
               <input
                 type="text"
@@ -193,32 +181,32 @@ export default function WorkerStopPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">소속 업체</label>
-                <input
-                  type="text"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all text-sm font-medium"
-                  placeholder="업체명"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">작업자명</label>
-                <input
-                  type="text"
-                  required
-                  value={workerName}
-                  onChange={(e) => setWorkerName(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all text-sm font-medium"
-                  placeholder="이름"
-                />
-              </div>
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">작업자명</label>
+              <input
+                type="text"
+                required
+                value={workerName}
+                onChange={(e) => setWorkerName(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all text-sm font-medium"
+                placeholder="이름"
+              />
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">작업중지 요청사유</label>
+              <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">휴대폰 번호</label>
+              <input
+                type="tel"
+                required
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all text-sm font-medium"
+                placeholder="010-0000-0000"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">작업중지 사유</label>
               <textarea
                 required
                 value={reason}
