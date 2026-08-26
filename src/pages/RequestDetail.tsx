@@ -105,24 +105,79 @@ export default function RequestDetail() {
 
           {(() => {
             const locationMatch = request.location?.match(/^(.*?) \(X:(\d+)%, Y:(\d+)%\)$/);
-            if (!locationMatch) return null;
-            const buildingName = locationMatch[1];
-            const markerX = parseInt(locationMatch[2], 10);
-            const markerY = parseInt(locationMatch[3], 10);
+            
+            let buildingName = '';
+            let markerX = null;
+            let markerY = null;
+
+            // 관리자 모드에서 A-1, B-2 등 텍스트만 있을 때 점을 찍어주기 위한 좌표 매핑 (퍼센트 기준)
+            const PREDEFINED_COORDINATES: Record<string, {x: number, y: number}> = {
+              'A-1': { x: 81, y: 10 },
+              'A-2': { x: 49, y: 17 },
+              'A-3': { x: 23, y: 9 },
+              'A-4': { x: 81, y: 25 },
+              'A-5': { x: 49, y: 32 },
+              'A-6': { x: 23, y: 25 },
+              'A-7': { x: 81, y: 40 },
+              'A-8': { x: 49, y: 48 },
+              'A-9': { x: 23, y: 40 },
+              'A-10': { x: 81, y: 55 },
+              'A-11': { x: 49, y: 64 },
+              'A-12': { x: 23, y: 55 },
+              'A-13': { x: 23, y: 70 },
+              'A-14': { x: 49, y: 79 },
+              'A-15': { x: 23, y: 95 },
+              
+              'B-1': { x: 52, y: 18 },
+              'B-2': { x: 52, y: 92 },
+              'B-3': { x: 71, y: 38 },
+              'B-4': { x: 23, y: 7 },
+              'B-5': { x: 7, y: 55 },
+              'B-6': { x: 23, y: 92 },
+              
+              'C-1': { x: 91, y: 50 },
+              'C-2': { x: 68, y: 50 },
+              'C-3': { x: 47, y: 50 },
+              'C-4': { x: 24, y: 50 },
+              'C-5': { x: 82, y: 13 },
+              'C-6': { x: 60, y: 13 },
+              'C-7': { x: 37, y: 13 },
+              'C-8': { x: 13, y: 13 },
+            };
+
+            if (locationMatch) {
+              buildingName = locationMatch[1];
+              markerX = parseInt(locationMatch[2], 10);
+              markerY = parseInt(locationMatch[3], 10);
+            } else {
+              const upperLoc = (request.location || '').trim().toUpperCase();
+              if (/^A-([1-9]|1[0-5])$/.test(upperLoc)) buildingName = '본관 A동';
+              else if (/^B-[1-6]$/.test(upperLoc)) buildingName = '본관 B동';
+              else if (/^C-[1-8]$/.test(upperLoc)) buildingName = '별관';
+
+              if (buildingName && PREDEFINED_COORDINATES[upperLoc]) {
+                markerX = PREDEFINED_COORDINATES[upperLoc].x;
+                markerY = PREDEFINED_COORDINATES[upperLoc].y;
+              }
+            }
+
+            if (!buildingName) return null;
 
             return (
               <div>
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">도면 위치 ({buildingName})</h3>
                 <div className="relative w-full max-w-2xl border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
                   <img 
-                    src={`/${buildingName}.png`} 
+                    src={`/${buildingName}.png?v=2`} 
                     alt={`${buildingName} 도면`} 
                     className="w-full h-auto"
                   />
-                  <div 
-                    className="absolute w-4 h-4 md:w-6 md:h-6 bg-red-600 rounded-full border-2 border-white shadow-[0_0_0_4px_rgba(220,38,38,0.2)] transform -translate-x-1/2 -translate-y-1/2 animate-pulse"
-                    style={{ left: `${markerX}%`, top: `${markerY}%` }}
-                  />
+                  {markerX !== null && markerY !== null && (
+                    <div 
+                      className="absolute w-4 h-4 md:w-6 md:h-6 bg-red-600 rounded-full border-2 border-white shadow-[0_0_0_4px_rgba(220,38,38,0.2)] transform -translate-x-1/2 -translate-y-1/2 animate-pulse"
+                      style={{ left: `${markerX}%`, top: `${markerY}%` }}
+                    />
+                  )}
                 </div>
               </div>
             );

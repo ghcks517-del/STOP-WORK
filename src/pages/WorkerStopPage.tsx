@@ -25,6 +25,9 @@ export default function WorkerStopPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  const KNOWN_BUILDINGS = ['본관 A동', '본관 B동', '별관'];
+  const isKnownBuilding = KNOWN_BUILDINGS.includes(location);
+
   useEffect(() => {
     // Remove manifest if it somehow got added (safeguard)
     const manifest = document.querySelector('link[rel="manifest"]');
@@ -35,12 +38,14 @@ export default function WorkerStopPage() {
     e.preventDefault();
     if (!project || !location || !workerName || !reason) return;
     
-    if (!coordinates) {
+    if (isKnownBuilding && !coordinates) {
       alert('도면에서 정확한 위치를 클릭하여 선택해주세요.');
       return;
     }
 
-    const finalLocation = `${location} (X:${Math.round(coordinates.x)}%, Y:${Math.round(coordinates.y)}%)`;
+    const finalLocation = (isKnownBuilding && coordinates)
+      ? `${location} (X:${Math.round(coordinates.x)}%, Y:${Math.round(coordinates.y)}%)`
+      : location;
 
     setIsSubmitting(true);
     try {
@@ -137,28 +142,31 @@ export default function WorkerStopPage() {
             
             <div>
               <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">상세 위치</label>
-              <select
+              <input
+                type="text"
+                list="building-list"
                 required
                 value={location}
                 onChange={(e) => {
                   setLocation(e.target.value);
                   setCoordinates(null);
                 }}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all text-sm font-medium appearance-none"
-              >
-                <option value="" disabled>건물을 선택해주세요</option>
-                <option value="본관 A동">본관 A동</option>
-                <option value="본관 B동">본관 B동</option>
-                <option value="별관">별관</option>
-              </select>
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all text-sm font-medium"
+                placeholder="예: 본관 A동, 또는 NFC 자동 기입"
+              />
+              <datalist id="building-list">
+                <option value="본관 A동" />
+                <option value="본관 B동" />
+                <option value="별관" />
+              </datalist>
             </div>
 
-            {location && (
+            {isKnownBuilding && (
               <div className="mt-4">
                 <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-2">도면에서 정확한 위치 선택</label>
                 <div className="relative w-full border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
                   <img 
-                    src={`/${location}.png`} 
+                    src={`/${location}.png?v=2`} 
                     alt="Floor plan" 
                     className="w-full h-auto cursor-crosshair"
                     onClick={(e) => {
