@@ -39,20 +39,13 @@ async function startServer() {
   // API Route to submit Stop Work Authority request
   app.post('/api/requests', async (req, res) => {
     try {
-      const { project, location, workerName, reason } = req.body;
+      const { location, workerName, phoneNumber, reason } = req.body;
       
-      if (!project || !location || !workerName || !reason) {
+      if (!location || !workerName || !reason) {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
       // If Firebase Admin is not initialized, we will just return success for the demo
-      // In a real scenario, we'd save to Firestore using admin SDK.
-      // But we can let the client-side Firebase SDK save it to Firestore directly,
-      // and this endpoint is JUST for triggering the push notification if needed.
-      // Actually, it's safer if the client saves directly to Firestore, and we use a 
-      // Firestore trigger. However, since we don't have Cloud Functions, the client can 
-      // call this API to send the push AFTER saving to Firestore.
-      
       if (!getApps().length) {
         console.log('[Mock Push] Would send push for:', req.body);
         return res.json({ success: true, mocked: true });
@@ -79,10 +72,29 @@ async function startServer() {
       if (uniqueTokens.length > 0) {
         const shortReason = reason.length > 20 ? reason.substring(0, 20) + '...' : reason;
         
-        const message = {
+        const message: any = {
           notification: {
-            title: '[작업중지권] 신규 접수',
-            body: `${project} / ${location}\n${workerName} - ${shortReason}`,
+            title: '🚨 [작업중지권] 긴급 접수',
+            body: `위치: ${location}\n작업자: ${workerName}${phoneNumber ? ` (${phoneNumber})` : ''}\n사유: ${shortReason}`,
+          },
+          android: {
+            priority: 'high',
+          },
+          webpush: {
+            headers: {
+              Urgency: 'high'
+            },
+            notification: {
+              requireInteraction: true
+            }
+          },
+          apns: {
+            payload: {
+              aps: {
+                contentAvailable: true,
+                sound: 'default'
+              }
+            }
           },
           tokens: uniqueTokens,
         };
@@ -114,7 +126,7 @@ async function startServer() {
         }
       }
 
-      res.json({ success: true, pushCount: tokens.length });
+      res.json({ success: true, pushCount: uniqueTokens.length });
     } catch (error) {
       console.error('Error processing request:', error);
       res.status(500).json({ error: 'Internal server error' });
