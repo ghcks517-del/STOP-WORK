@@ -3,10 +3,12 @@ import { db, getFirebaseMessaging } from '../lib/firebase';
 import { doc, getDoc, collection, setDoc, query, where, getDocs, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { getToken, onMessage } from 'firebase/messaging';
 import { isMobileDevice, isRunningAsPWA } from '../lib/utils';
-import { Smartphone, Bell, BellOff, Info, CheckCircle2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Smartphone, Bell, BellOff, Info, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function AdminSettings() {
+  const navigate = useNavigate();
   const [devices, setDevices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -156,6 +158,15 @@ export default function AdminSettings() {
 
   return (
     <div className="flex flex-col gap-6 h-full overflow-hidden">
+      <div>
+        <button 
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors uppercase tracking-widest"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          뒤로가기
+        </button>
+      </div>
       <div className="flex flex-col md:flex-row gap-6 h-full overflow-y-auto pb-10">
         <div className="w-full md:w-1/3 flex flex-col gap-6">
           <div className="bg-orange-50 p-5 rounded-2xl border border-orange-100 shadow-sm">

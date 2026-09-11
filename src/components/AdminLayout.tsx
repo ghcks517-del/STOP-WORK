@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { ShieldAlert, LogOut, Settings, LayoutDashboard } from 'lucide-react';
+import { ShieldAlert, LogOut, Settings, LayoutDashboard, ArrowLeft } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -78,7 +78,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4 font-sans">
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4 font-sans relative">
+        <div className="absolute top-4 left-4 md:top-8 md:left-8">
+          <button onClick={() => navigate('/home')} className="p-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg transition-colors shadow-sm flex items-center justify-center">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        </div>
         <div className="bg-white p-8 rounded-2xl shadow-sm text-center max-w-sm w-full border border-slate-200">
           <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center mx-auto mb-4">
             <ShieldAlert className="w-6 h-6" />

@@ -2,12 +2,13 @@ import React from "react";
 import { useState, useEffect } from 'react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { useSearchParams, Link, Navigate } from 'react-router-dom';
-import { AlertTriangle, Send } from 'lucide-react';
+import { useSearchParams, Link, Navigate, useNavigate } from 'react-router-dom';
+import { AlertTriangle, Send, ArrowLeft } from 'lucide-react';
 import { isRunningAsPWA } from '../lib/utils';
 
 export default function HazardReportPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   
   if (isRunningAsPWA()) {
     return <Navigate to="/admin" replace />;
@@ -115,6 +116,11 @@ export default function HazardReportPage() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col p-4 md:p-8 font-sans relative">
+      <div className="absolute top-4 left-4 md:top-8 md:left-8">
+        <button onClick={() => navigate(-1)} className="p-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg transition-colors shadow-sm flex items-center justify-center">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+      </div>
       <div className="absolute top-4 right-4 md:top-8 md:right-8">
         <Link to="/admin" className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-[10px] font-bold rounded-lg transition-colors shadow-sm tracking-widest">
           관리자
