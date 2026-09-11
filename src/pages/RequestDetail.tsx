@@ -183,7 +183,9 @@ export default function RequestDetail() {
           })()}
 
           <div>
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">작업중지 사유</h3>
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+              {request.type === 'hazard' ? '신고 내용 (상황)' : '작업중지 사유'}
+            </h3>
             <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
               <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
                 {request.reason}

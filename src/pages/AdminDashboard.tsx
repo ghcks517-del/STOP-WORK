@@ -10,6 +10,9 @@ import { Download, Trash2 } from 'lucide-react';
 export default function AdminDashboard() {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState<'all' | 'stop' | 'hazard'>('all');
+
+  const filteredRequests = requests.filter(req => filterType === 'all' || req.type === filterType);
 
   useEffect(() => {
     const q = query(collection(db, 'stopRequests'), orderBy('createdAt', 'desc'));
@@ -25,15 +28,16 @@ export default function AdminDashboard() {
   }, []);
 
   const handleExportExcel = () => {
-    if (requests.length === 0) {
+    if (filteredRequests.length === 0) {
       alert('다운로드할 데이터가 없습니다.');
       return;
     }
 
-    const headers = ['No', '상태', '접수일시', '상세 위치', '작업자 명', '휴대폰 번호', '작업중지 사유', '조치 내역'];
+    const headers = ['No', '구분', '상태', '접수일시', '상세 위치', '작업자 명', '휴대폰 번호', '사유', '조치 내역'];
     
-    const exportData = requests.map((req, index) => [
+    const exportData = filteredRequests.map((req, index) => [
       index + 1,
+      req.type === 'hazard' ? '위험상황' : '작업중지',
       req.status === 'pending' ? '접수' : req.status === 'in_progress' ? '조치중' : '완료',
       req.createdAt ? format(req.createdAt.toDate(), 'yyyy-MM-dd HH:mm:ss') : '-',
       req.location,
@@ -51,12 +55,13 @@ export default function AdminDashboard() {
     // Column widths
     worksheet['!cols'] = [
       { wch: 5 },  // No
+      { wch: 10 }, // 구분
       { wch: 10 }, // 상태
       { wch: 20 }, // 접수일시
       { wch: 20 }, // 상세 위치
       { wch: 12 }, // 작업자 명
       { wch: 15 }, // 휴대폰 번호
-      { wch: 40 }, // 작업중지 사유
+      { wch: 40 }, // 사유
       { wch: 40 }  // 조치 내역
     ];
 
@@ -82,7 +87,7 @@ export default function AdminDashboard() {
           } : undefined,
           alignment: {
             vertical: 'center',
-            horizontal: (C === 6 || C === 7) && !isHeader ? 'left' : 'center', // Left align for reason and action
+            horizontal: (C === 7 || C === 8) && !isHeader ? 'left' : 'center', // Left align for reason and action
             wrapText: true
           },
           border: {
@@ -96,12 +101,13 @@ export default function AdminDashboard() {
     }
 
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, '작업중지권_접수내역');
-    XLSX.writeFile(workbook, `작업중지권_접수내역_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`);
+    XLSX.utils.book_append_sheet(workbook, worksheet, '안전신고_접수내역');
+    XLSX.writeFile(workbook, `안전신고_접수내역_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`);
   };
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
+    e.stopPropagation();
     if (window.confirm('정말로 이 접수 내역을 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.')) {
       try {
         await deleteDoc(doc(db, 'stopRequests', id));
@@ -118,7 +124,7 @@ export default function AdminDashboard() {
     <div className="flex flex-col h-full gap-6">
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 flex-wrap gap-4">
-          <h2 className="font-bold text-sm">최근 작업중지권 접수 내역</h2>
+          <h2 className="font-bold text-sm">최근 신고 접수 내역</h2>
           <div className="flex items-center gap-2">
             <button 
               onClick={handleExportExcel}
@@ -127,24 +133,52 @@ export default function AdminDashboard() {
               <Download className="w-3.5 h-3.5" />
               엑셀 다운로드
             </button>
-            <span className="text-[10px] text-blue-600 font-bold px-2 py-1 bg-blue-50 rounded-md">총 {requests.length}건</span>
+            <span className="text-[10px] text-blue-600 font-bold px-2 py-1 bg-blue-50 rounded-md">총 {filteredRequests.length}건</span>
             <span className="text-[10px] text-orange-600 font-bold px-2 py-1 bg-orange-50 rounded-md">LIVE UPDATE</span>
           </div>
         </div>
-
+        <div className="bg-slate-50/50 border-b border-slate-100 p-4 flex justify-center">
+          <div className="inline-flex bg-slate-200/50 p-1 rounded-xl">
+            <button
+              onClick={() => setFilterType('all')}
+              className={`px-6 py-2 rounded-lg text-xs font-bold transition-all ${filterType === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              전체 보기
+            </button>
+            <button
+              onClick={() => setFilterType('stop')}
+              className={`px-6 py-2 rounded-lg text-xs font-bold transition-all ${filterType === 'stop' ? 'bg-red-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              작업중지권
+            </button>
+            <button
+              onClick={() => setFilterType('hazard')}
+              className={`px-6 py-2 rounded-lg text-xs font-bold transition-all ${filterType === 'hazard' ? 'bg-orange-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              위험상황 신고
+            </button>
+          </div>
+        </div>
         <div className="p-4 sm:p-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {requests.map(req => (
+          {filteredRequests.map(req => (
             <Link key={req.id} to={`/admin/requests/${req.id}`} className="block relative group">
               <div className="p-4 border border-slate-100 rounded-xl bg-white hover:border-orange-200 hover:shadow-md transition-all h-full flex flex-col">
                 <div className="flex justify-between items-start mb-2 pr-8">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                    req.status === 'pending' ? 'bg-orange-100 text-orange-700' :
-                    req.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                    'bg-slate-100 text-slate-600'
-                  }`}>
-                    {req.status === 'pending' ? '긴급 / 접수' : 
-                     req.status === 'in_progress' ? '일반 / 조치중' : '완료'}
-                  </span>
+                  <div className="flex gap-2">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                      req.type === 'hazard' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {req.type === 'hazard' ? '[위험상황]' : '[작업중지]'}
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                      req.status === 'pending' ? 'bg-orange-100 text-orange-700' :
+                      req.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                      'bg-slate-100 text-slate-600'
+                    }`}>
+                      {req.status === 'pending' ? '접수' : 
+                       req.status === 'in_progress' ? '조치중' : '완료'}
+                    </span>
+                  </div>
                   {req.createdAt && (
                     <span className="text-[10px] text-slate-400">
                       {format(req.createdAt.toDate(), 'HH:mm:ss')}
@@ -172,9 +206,9 @@ export default function AdminDashboard() {
             </Link>
           ))}
 
-          {requests.length === 0 && (
+          {filteredRequests.length === 0 && (
             <div className="col-span-full py-12 text-center text-slate-500 rounded-xl border border-slate-100 border-dashed">
-              접수된 작업중지권이 없습니다.
+              접수된 내역이 없습니다.
             </div>
           )}
         </div>

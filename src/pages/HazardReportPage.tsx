@@ -6,7 +6,7 @@ import { useSearchParams, Link, Navigate } from 'react-router-dom';
 import { AlertTriangle, Send } from 'lucide-react';
 import { isRunningAsPWA } from '../lib/utils';
 
-export default function WorkerStopPage() {
+export default function HazardReportPage() {
   const [searchParams] = useSearchParams();
   
   if (isRunningAsPWA()) {
@@ -53,7 +53,7 @@ export default function WorkerStopPage() {
     try {
       // 1. Save to Firestore directly
       const requestRef = await addDoc(collection(db, 'stopRequests'), {
-        type: 'stop',
+        type: 'hazard',
         location: finalLocation,
         workerName,
         phoneNumber,
@@ -69,7 +69,7 @@ export default function WorkerStopPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id: requestRef.id,
-            type: 'stop',
+            type: 'hazard',
             location,
             workerName,
             phoneNumber,
@@ -98,7 +98,7 @@ export default function WorkerStopPage() {
             <Send className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2">접수 완료</h1>
-          <p className="text-slate-600 mb-6">작업중지권이 안전하게 관리자에게 전달되었습니다. 안전한 곳으로 대피해주세요.</p>
+          <p className="text-slate-600 mb-6">위험상황이 안전하게 접수되었습니다. 감사합니다.</p>
           <button 
             onClick={() => {
               setSubmitted(false);
@@ -122,10 +122,10 @@ export default function WorkerStopPage() {
       </div>
       <div className="max-w-md w-full mx-auto flex-1 flex flex-col mt-4 md:mt-0">
         <div className="mb-6 mt-4">
-          <div className="inline-flex items-center justify-center p-3 bg-red-100 text-red-600 rounded-xl mb-4">
+          <div className="inline-flex items-center justify-center p-3 bg-orange-100 text-orange-600 rounded-xl mb-4">
             <AlertTriangle className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2 leading-tight">작업중지권 행사</h1>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2 leading-tight">위험상황 신고</h1>
           <p className="text-xs text-slate-500 leading-relaxed">위험 요인이 발견되었거나 사고 발생 위험이 있을 경우 즉시 작업을 중지하세요.</p>
         </div>
 
@@ -143,7 +143,7 @@ export default function WorkerStopPage() {
                   setLocation(e.target.value);
                   setCoordinates(null);
                 }}
-                className={`w-full px-4 py-3 border border-slate-200 rounded-xl outline-none transition-all text-sm font-medium ${isNfcLocation ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-slate-50 focus:ring-2 focus:ring-red-500 focus:border-red-500'}`}
+                className={`w-full px-4 py-3 border border-slate-200 rounded-xl outline-none transition-all text-sm font-medium ${isNfcLocation ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-slate-50 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'}`}
                 placeholder="예: 본관 A동, 또는 NFC 자동 기입"
               />
               <datalist id="building-list">
@@ -170,7 +170,7 @@ export default function WorkerStopPage() {
                   />
                   {coordinates && (
                     <div 
-                      className="absolute w-4 h-4 bg-red-600 rounded-full border-2 border-white shadow-md transform -translate-x-1/2 -translate-y-1/2"
+                      className="absolute w-4 h-4 bg-orange-600 rounded-full border-2 border-white shadow-md transform -translate-x-1/2 -translate-y-1/2"
                       style={{ left: `${coordinates.x}%`, top: `${coordinates.y}%` }}
                     />
                   )}
@@ -190,7 +190,7 @@ export default function WorkerStopPage() {
                 required
                 value={workerName}
                 onChange={(e) => setWorkerName(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all text-sm font-medium"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-sm font-medium"
                 placeholder="이름"
               />
             </div>
@@ -202,19 +202,19 @@ export default function WorkerStopPage() {
                 required
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all text-sm font-medium"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-sm font-medium"
                 placeholder="010-0000-0000"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">작업중지 사유</label>
+              <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">신고 내용 (상황)</label>
               <textarea
                 required
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={4}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all resize-none text-sm font-medium leading-relaxed"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-none text-sm font-medium leading-relaxed"
                 placeholder="어떤 위험이 있는지 상세히 적어주세요."
               ></textarea>
             </div>
@@ -223,9 +223,9 @@ export default function WorkerStopPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full mt-8 py-4 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-red-200 transition-all active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2 tracking-wide uppercase"
+            className="w-full mt-8 py-4 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-orange-200 transition-all active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2 tracking-wide uppercase"
           >
-            {isSubmitting ? '접수 중...' : '즉시 작업중지권 접수'}
+            {isSubmitting ? '접수 중...' : '신고 접수하기'}
           </button>
         </form>
       </div>

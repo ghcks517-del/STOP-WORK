@@ -39,7 +39,7 @@ async function startServer() {
   // API Route to submit Stop Work Authority request
   app.post('/api/requests', async (req, res) => {
     try {
-      const { location, workerName, phoneNumber, reason } = req.body;
+      const { type = 'stop', location, workerName, phoneNumber, reason } = req.body;
       
       if (!location || !workerName || !reason) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -72,9 +72,10 @@ async function startServer() {
       if (uniqueTokens.length > 0) {
         const shortReason = reason.length > 20 ? reason.substring(0, 20) + '...' : reason;
         
+        const title = type === 'hazard' ? '⚠️ [위험상황] 신고 접수' : '🚨 [작업중지권] 긴급 접수';
         const message: any = {
           notification: {
-            title: '🚨 [작업중지권] 긴급 접수',
+            title: title,
             body: `위치: ${location}\n작업자: ${workerName}${phoneNumber ? ` (${phoneNumber})` : ''}\n사유: ${shortReason}`,
           },
           android: {
