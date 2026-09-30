@@ -19,6 +19,9 @@ export default function AdminSettings() {
   const [pushStatus, setPushStatus] = useState<'granted' | 'denied' | 'default'>('default');
   const [currentToken, setCurrentToken] = useState<string | null>(null);
   const [isToggling, setIsToggling] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if ('Notification' in window) {
@@ -28,8 +31,11 @@ export default function AdminSettings() {
   }, []);
 
   const fetchDevices = async () => {
-    const adminUid = localStorage.getItem('adminUid');
-    if (!adminUid) return;
+    let adminUid = localStorage.getItem('adminUid');
+    if (!adminUid) {
+      adminUid = 'admin_' + Math.random().toString(36).substring(2, 11);
+      localStorage.setItem('adminUid', adminUid);
+    }
     const q = query(collection(db, 'adminDevices'), where('adminUid', '==', adminUid));
     const snapshot = await getDocs(q);
     setDevices(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -37,108 +43,137 @@ export default function AdminSettings() {
   };
 
   const enablePush = async () => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setStatusMessage('권한 확인 중...');
+    setIsToggling(true);
+
     try {
       if (!isMobile) {
-        alert('모바일 기기에서만 지원됩니다.');
-        return;
+        setErrorMessage('모바일 기기에서만 Push 알림 등록이 권장됩니다.');
       }
-      if (!isStandalone) {
-        alert('PWA(홈 화면 추가) 모드에서만 실행 가능합니다.');
-        return;
-      }
-      const adminUid = localStorage.getItem('adminUid');
+      
+      let adminUid = localStorage.getItem('adminUid');
       if (!adminUid) {
-        alert('관리자 로그인 정보가 없습니다.');
-        return;
+        adminUid = 'admin_' + Math.random().toString(36).substring(2, 11);
+        localStorage.setItem('adminUid', adminUid);
       }
       
       if (!('Notification' in window)) {
-        alert('이 기기/브라우저는 Push 알림을 지원하지 않습니다. (iOS 16.4+ 필요)');
-        return;
+        throw new Error('이 기기/브라우저는 Push 알림을 지원하지 않습니다. (iOS 16.4+ 및 PWA 필요)');
       }
       
-      setIsToggling(true);
       let permission = Notification.permission;
       if (permission !== 'granted') {
+        setStatusMessage('알림 권한을 요청하는 중...');
         permission = await Notification.requestPermission();
         setPushStatus(permission);
       }
       
       if (permission === 'denied') {
-        alert('알림 권한이 거부되었습니다. 기기 설정에서 알림을 직접 허용해주세요.');
-        setIsToggling(false);
-        return;
+        throw new Error('알림 권한이 거부되었습니다. 휴대폰 설정 > 알림에서 권한을 허용해주세요.');
       }
 
-      if (permission === 'granted') {
-        const messaging = await getFirebaseMessaging();
-        if (!messaging) {
-          alert('현재 환경에서는 Push 알림 기능이 지원되지 않습니다.');
-          setIsToggling(false);
-          return;
-        }
-        
-        // Ensure Service Worker is registered
-        const registration = await navigator.serviceWorker.register('/admin/firebase-messaging-sw.js');
-        await navigator.serviceWorker.ready;
-        
-        // getToken은 VAPID 키가 없거나 네트워크 환경에 따라 무한 대기할 수 있으므로 타임아웃을 설정합니다.
-        const token = await Promise.race([
-          getToken(messaging, { serviceWorkerRegistration: registration }),
-          new Promise<string>((_, reject) => setTimeout(() => reject(new Error('토큰 발급 시간 초과 (VAPID 설정 문제일 수 있습니다.)')), 10000))
-        ]);
-
-        if (token) {
-          setCurrentToken(token);
-          const deviceId = `device_${adminUid}_${Date.now()}`;
-          localStorage.setItem('currentDeviceId', deviceId);
-          
-          await setDoc(doc(db, 'adminDevices', deviceId), {
-            adminUid: adminUid,
-            adminName: '관리자',
-            pushRegistrationId: token,
-            pushProvider: 'FCM',
-            deviceName: navigator.userAgent.split(' ')[0] || 'Unknown Device',
-            platform: /Android/i.test(navigator.userAgent) ? 'Android' : 'iOS',
-            browser: 'App',
-            mobileDevice: true,
-            pwaInstalled: true,
-            standaloneVerified: true,
-            pushEnabled: true,
-            notificationPermission: 'granted',
-            registeredAt: serverTimestamp(),
-            lastStandaloneSeenAt: serverTimestamp(),
-            active: true
-          });
-          
-          await fetchDevices();
-          alert('Push 알림이 활성화되었습니다.');
-        } else {
-          alert('Push 토큰을 발급받지 못했습니다.');
-        }
+      if (permission !== 'granted') {
+        throw new Error('알림 권한이 승인되지 않았습니다.');
       }
+
+      setStatusMessage('푸시 엔진 초기화 중...');
+      const messaging = await getFirebaseMessaging();
+      if (!messaging) {
+        throw new Error('현재 브라우저 환경에서는 Firebase Push 알림을 지원하지 않습니다.');
+      }
+      
+      setStatusMessage('서비스 워커 등록 중...');
+      let registration: ServiceWorkerRegistration;
+      try {
+        registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' });
+      } catch (swErr) {
+        console.warn('Fallback to /admin/firebase-messaging-sw.js', swErr);
+        registration = await navigator.serviceWorker.register('/admin/firebase-messaging-sw.js');
+      }
+
+      // If installing, wait briefly up to 2 seconds without hanging
+      if (registration.installing) {
+        await new Promise<void>((resolve) => {
+          const worker = registration.installing;
+          if (!worker) return resolve();
+          const onChange = () => {
+            if (worker.state === 'activated' || worker.state === 'installed') {
+              worker.removeEventListener('statechange', onChange);
+              resolve();
+            }
+          };
+          worker.addEventListener('statechange', onChange);
+          setTimeout(resolve, 2000);
+        });
+      }
+
+      setStatusMessage('FCM 기기 고유 토큰 발급 중...');
+      const token = await Promise.race([
+        getToken(messaging, { 
+          serviceWorkerRegistration: registration,
+          vapidKey: (import.meta as any).env?.VITE_FIREBASE_VAPID_KEY || undefined
+        }),
+        new Promise<string>((_, reject) => 
+          setTimeout(() => reject(new Error('푸시 토큰 발급 시간이 초과되었습니다. 네트워크 연결을 확인하고 다시 시도해주세요.')), 15000)
+        )
+      ]);
+
+      if (!token) {
+        throw new Error('Push 토큰을 발급받지 못했습니다.');
+      }
+
+      setStatusMessage('데이터베이스에 기기 등록 중...');
+      setCurrentToken(token);
+      const deviceId = `device_${adminUid}_${Date.now()}`;
+      localStorage.setItem('currentDeviceId', deviceId);
+      
+      await setDoc(doc(db, 'adminDevices', deviceId), {
+        adminUid: adminUid,
+        adminName: '관리자',
+        pushRegistrationId: token,
+        pushProvider: 'FCM',
+        deviceName: (/Android/i.test(navigator.userAgent) ? 'Android Phone' : /iPhone|iPad/i.test(navigator.userAgent) ? 'iPhone' : 'Mobile Device'),
+        platform: /Android/i.test(navigator.userAgent) ? 'Android' : 'iOS',
+        browser: 'App',
+        mobileDevice: true,
+        pwaInstalled: true,
+        standaloneVerified: true,
+        pushEnabled: true,
+        notificationPermission: 'granted',
+        registeredAt: serverTimestamp(),
+        lastStandaloneSeenAt: serverTimestamp(),
+        active: true
+      });
+      
+      await fetchDevices();
+      setSuccessMessage('🎉 새 기기의 Push 알림이 정상적으로 활성화되었습니다!');
     } catch (error: any) {
       console.error('Error enabling push:', error);
-      alert(`Push 설정 오류: ${error.message || '알 수 없는 오류'}`);
+      setErrorMessage(error.message || '알 수 없는 오류가 발생했습니다.');
     } finally {
       setIsToggling(false);
+      setStatusMessage(null);
     }
   };
 
   const removeDevice = async (deviceId: string) => {
     if (confirm('이 기기의 Push 알림을 해제하시겠습니까?')) {
       setIsToggling(true);
+      setErrorMessage(null);
+      setSuccessMessage(null);
       try {
         await deleteDoc(doc(db, 'adminDevices', deviceId));
         if (localStorage.getItem('currentDeviceId') === deviceId) {
           localStorage.removeItem('currentDeviceId');
         }
         await fetchDevices();
-        alert('Push 알림이 성공적으로 해제되었습니다.\n\n(참고: 기기 설정에 표시되는 "Push 권한: 허용됨" 문구는 브라우저 고유 권한이므로 유지되지만, 시스템상 알림 발송은 완전히 중단됩니다.)');
+        setSuccessMessage('Push 알림이 성공적으로 해제되었습니다.');
         return true;
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to remove device:', error);
-        alert('알림 해제에 실패했습니다.');
+        setErrorMessage('알림 해제에 실패했습니다: ' + (error.message || ''));
         return false;
       } finally {
         setIsToggling(false);
@@ -207,7 +242,27 @@ export default function AdminSettings() {
                   </button>
                 </>
               ) : (
-                <div className="mt-4 pt-4 border-t border-orange-200/50">
+                <div className="mt-4 pt-4 border-t border-orange-200/50 space-y-3">
+                  {errorMessage && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 leading-snug">
+                      <p className="font-bold mb-1">⚠️ 등록 오류</p>
+                      <p className="break-all">{errorMessage}</p>
+                    </div>
+                  )}
+
+                  {successMessage && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-xs text-green-700 leading-snug">
+                      {successMessage}
+                    </div>
+                  )}
+
+                  {statusMessage && (
+                    <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700 flex items-center gap-2">
+                      <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0"></div>
+                      <span>{statusMessage}</span>
+                    </div>
+                  )}
+
                   {devices.some(d => d.id === localStorage.getItem('currentDeviceId')) ? (
                     <button
                       onClick={async () => {
@@ -230,7 +285,7 @@ export default function AdminSettings() {
                       className={`w-full py-3 rounded-xl text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2 ${isToggling ? 'bg-slate-400 text-white cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
                     >
                       <Bell className="w-4 h-4" />
-                      {isToggling ? '권한 요청 및 등록 중...' : 'Push 알림 활성화'}
+                      {isToggling ? (statusMessage || '등록 진행 중...') : 'Push 알림 활성화'}
                     </button>
                   )}
                 </div>

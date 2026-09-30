@@ -12,7 +12,7 @@ export default function LandingPage() {
 
       <div className="max-w-md w-full mx-auto flex-1 flex flex-col justify-center gap-6">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">안전 보건 신고</h1>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">작업중지권/위험상황 신고</h1>
           <p className="text-sm text-slate-500">원하시는 항목을 선택해주세요.</p>
         </div>
 
