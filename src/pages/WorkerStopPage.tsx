@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useSearchParams, Link, Navigate, useNavigate } from 'react-router-dom';
-import { AlertTriangle, Send, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, Send, ArrowLeft, X } from 'lucide-react';
 import { isRunningAsPWA } from '../lib/utils';
 
 export default function WorkerStopPage() {
@@ -138,20 +138,75 @@ export default function WorkerStopPage() {
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <div className="space-y-4 flex-1">
             <div>
-              <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-1">상세 위치</label>
-              <input
-                type="text"
-                list={isNfcLocation ? undefined : "building-list"}
-                required
-                readOnly={isNfcLocation}
-                value={location}
-                onChange={(e) => {
-                  setLocation(e.target.value);
-                  setCoordinates(null);
-                }}
-                className={`w-full px-4 py-3 border border-slate-200 rounded-xl outline-none transition-all text-sm font-medium ${isNfcLocation ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-slate-50 focus:ring-2 focus:ring-red-500 focus:border-red-500'}`}
-                placeholder="예: 본관 A동, 또는 NFC 자동 기입"
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500">
+                  상세 위치
+                </label>
+                {location && !isNfcLocation && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLocation('');
+                      setCoordinates(null);
+                    }}
+                    className="text-[11px] text-red-600 hover:text-red-700 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    선택 초기화
+                  </button>
+                )}
+              </div>
+
+              {!isNfcLocation && (
+                <div className="grid grid-cols-3 gap-2 mb-2.5">
+                  {KNOWN_BUILDINGS.map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => {
+                        setLocation(b);
+                        setCoordinates(null);
+                      }}
+                      className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all border text-center cursor-pointer ${
+                        location === b
+                          ? 'bg-red-600 text-white border-red-600 shadow-md ring-2 ring-red-200 scale-[1.02]'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                      }`}
+                    >
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="relative">
+                <input
+                  type="text"
+                  list={isNfcLocation ? undefined : "building-list"}
+                  required
+                  readOnly={isNfcLocation}
+                  value={location}
+                  onChange={(e) => {
+                    setLocation(e.target.value);
+                    setCoordinates(null);
+                  }}
+                  className={`w-full px-4 py-3 ${location && !isNfcLocation ? 'pr-10' : ''} border border-slate-200 rounded-xl outline-none transition-all text-sm font-medium ${isNfcLocation ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-slate-50 focus:ring-2 focus:ring-red-500 focus:border-red-500'}`}
+                  placeholder="건물 버튼을 선택하거나 직접 입력하세요"
+                />
+                {location && !isNfcLocation && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLocation('');
+                      setCoordinates(null);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer"
+                    title="선택 지우기"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
               <datalist id="building-list">
                 <option value="본관 A동" />
                 <option value="본관 B동" />
@@ -161,12 +216,33 @@ export default function WorkerStopPage() {
 
             {isKnownBuilding && (
               <div className="mt-4">
-                <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-2">도면에서 정확한 위치 선택</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-[10px] uppercase tracking-widest font-bold text-slate-500">
+                    도면에서 정확한 위치 선택 <span className="text-red-600 font-bold">({location})</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLocation('');
+                      setCoordinates(null);
+                    }}
+                    className="text-[11px] text-slate-500 hover:text-red-600 underline cursor-pointer"
+                  >
+                    다른 장소로 변경
+                  </button>
+                </div>
                 <div className="relative w-full border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
                   <img 
-                    src={`/${location}.png?v=2`} 
+                    src={`/admin/${encodeURIComponent(location)}.png?v=3`} 
                     alt="Floor plan" 
                     className="w-full h-auto cursor-crosshair"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.dataset.triedFallback) {
+                        target.dataset.triedFallback = 'true';
+                        target.src = `/${encodeURIComponent(location)}.png?v=3`;
+                      }
+                    }}
                     onClick={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect();
                       const x = ((e.clientX - rect.left) / rect.width) * 100;

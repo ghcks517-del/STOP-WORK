@@ -167,9 +167,16 @@ export default function RequestDetail() {
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">도면 위치 ({buildingName})</h3>
                 <div className="relative w-full max-w-2xl border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
                   <img 
-                    src={`/${buildingName}.png?v=2`} 
+                    src={`/admin/${encodeURIComponent(buildingName)}.png?v=3`} 
                     alt={`${buildingName} 도면`} 
                     className="w-full h-auto"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.dataset.triedFallback) {
+                        target.dataset.triedFallback = 'true';
+                        target.src = `/${encodeURIComponent(buildingName)}.png?v=3`;
+                      }
+                    }}
                   />
                   {markerX !== null && markerY !== null && (
                     <div 
